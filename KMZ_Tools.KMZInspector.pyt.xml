@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata xml:lang="en">
+	<Esri>
+		<CreaDate>20260522</CreaDate>
+		<CreaTime>00000000</CreaTime>
+		<ArcGISFormat>1.0</ArcGISFormat>
+		<SyncOnce>TRUE</SyncOnce>
+	</Esri>
+	<tool name="KMZInspector" displayname="Inspect KMZ/KML (Preflight Check)" toolboxalias="kmztools" xmlns="">
+		<summary>Reads one or more KMZ/KML files without writing anything and reports element counts, folder structure stats, popup parse-tier breakdown, style coverage, and likely conversion concerns. Run this BEFORE the conversion tools to spot issues (malformed XML, geometry-less placemarks, broken styleUrls, NetworkLinks, deep folder paths) that would otherwise show up mid-run.</summary>
+		<usage>Pick KMZ/KML files and run. The report streams to the geoprocessing messages pane; pass an output .txt path to also save it to disk. Nothing is written to any geodatabase. Multi-file runs print a per-file section followed by an AGGREGATE block with totals.</usage>
+		<parameters>
+			<param name="input_kmz" displayname="Input KMZ/KML Files" type="Required" direction="Input" datatype="File" expression="input_kmz">
+				<dialogReference>One or more KMZ or KML files to inspect. KMZs are extracted to a temp folder (cleaned up automatically) and the inner doc.kml is parsed with lxml recovery. Each file produces its own report section.</dialogReference>
+			</param>
+			<param name="report_file" displayname="Output Report File (optional)" type="Optional" direction="Output" datatype="File" expression="report_file">
+				<dialogReference>Optional .txt file to save the full report. If left blank, the report is only shown in the geoprocessing messages pane. The file contains the same text plus the AGGREGATE summary at the end.</dialogReference>
+			</param>
+			<param name="verbose" displayname="Verbose mode (per-file detail; aggregate stays the same)" type="Optional" direction="Input" datatype="Boolean" expression="verbose">
+				<dialogReference>Reserved for future per-folder breakdown output. Current aggregate stats already cover most use cases; leave off unless you want the extended per-file detail.</dialogReference>
+			</param>
+		</parameters>
+	</tool>
+</metadata>

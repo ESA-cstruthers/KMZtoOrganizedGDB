@@ -1,0 +1,19 @@
+# Normalize line endings on commit; check out native per OS for editors.
+* text=auto eol=lf
+
+# Python toolbox & helper modules: enforce LF in repo.
+*.py    text eol=lf
+*.pyt   text eol=lf
+*.xml   text eol=lf
+*.html  text eol=lf
+*.md    text eol=lf
+*.txt   text eol=lf
+*.json  text eol=lf
+
+# Binary -- never normalize, never diff as text.
+*.kmz   binary
+*.kml   text eol=lf
+*.png   binary
+*.jpg   binary
+*.pdf   binary
+*.gdb/* binary

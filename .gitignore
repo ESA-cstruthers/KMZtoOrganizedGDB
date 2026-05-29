@@ -1,0 +1,49 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# --- ArcGIS Pro working artifacts ---
+# ESRI scratch GDBs, project temp files, lock files
+*.gdb.lock
+*.lock
+*.sr.lock
+*.locking_session
+schema.ini
+info/
+log/
+scratch.gdb/
+default.gdb/
+# ArcGIS Pro project containers (if a tester drops one here for QA)
+*.aprx
+*.atbx
+*.aprx.lock
+
+# --- Geospatial output expected at runtime ---
+# Output GDBs/folders created by running the tools should NOT be versioned.
+# Uncomment + adjust if your QA layout uses different names.
+# output/
+# *.gdb/
+
+# --- KMZ working / extracted ---
+kmz_*/        # KMLParser tempdir prefix
+*.kmz.tmp
+
+# --- Claude Code local scratch ---
+.claude/settings.local.json
+
+# --- IDE / OS ---
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# --- Don't ignore the toolbox-side metadata XMLs (they ARE source) ---
+!KMZ_Tools*.pyt.xml

@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KMZ to Organize GDB - Decision Flow</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    --ink: #1f2933;
+    --ink-soft: #52616b;
+    --rule: #c8d0d8;
+    --rule-soft: #e4e9ed;
+    --panel: #f5f7f9;
+    --panel-2: #eef2f5;
+    --accent: #2c5f8d;
+    --kmz: #8a6d3b;
+    --kmz-soft: #f4ecd8;
+    --scratch: #5b6c7a;
+    --gdb: #2c5f8d;
+    --gdb-soft: #d6e4f0;
+    --warn: #b85c00;
+    --warn-soft: #f7e6d4;
+    --good: #1c6b3c;
+    --decision-bg: #fffce8;
+    --decision-bd: #d9b94d;
+    --process-bg: #fff;
+    --process-bd: #a9c2db;
+    --outcome-bg: #d6e4f0;
+    --outcome-bd: #6790b3;
+  }
+  html, body { background: #fff; color: var(--ink); }
+  body {
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    margin: 0 auto;
+    padding: 18px 28px 24px;
+    max-width: 1170px;
+    font-size: 13.5px;
+    line-height: 1.4;
+  }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+  }
+  header h1 { margin: 0; font-size: 22px; letter-spacing: -0.01em; }
+  header .sub { color: var(--ink-soft); font-size: 13px; }
+  header .tool-tag {
+    margin-left: auto;
+    background: var(--gdb-soft);
+    color: var(--gdb);
+    font-weight: 600;
+    font-size: 11.5px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    border: 1px solid #a9c2db;
+  }
+
+  .context-band {
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    background: var(--gdb-soft);
+    border: 1px solid #a9c2db;
+    border-radius: 6px;
+    font-size: 11.5px;
+    color: var(--ink);
+    line-height: 1.55;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 20px;
+    align-items: baseline;
+  }
+  .context-band strong { color: var(--ink); font-weight: 600; }
+  .context-band code {
+    background: #fff;
+    border: 1px solid #c4d5e6;
+    border-radius: 3px;
+    padding: 0 5px;
+    font-size: 11px;
+    font-family: Consolas, monospace;
+  }
+
+  .sample {
+    border: 1px dashed var(--rule);
+    background: #fdfcfa;
+    border-radius: 5px;
+    padding: 7px 12px;
+    font-size: 12px;
+    margin-bottom: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 14px;
+    line-height: 1.5;
+  }
+  .sample .lbl { color: var(--ink-soft); font-weight: 600; }
+  .sample .kmz-tag {
+    background: var(--kmz-soft);
+    color: var(--kmz);
+    padding: 1px 7px;
+    border-radius: 3px;
+    font-weight: 600;
+    font-size: 11.5px;
+    font-family: Consolas, monospace;
+  }
+  .sample .path { font-family: Consolas, monospace; color: var(--ink); }
+  .sample .sep { color: var(--rule); }
+
+  .section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 14px 0 10px 0;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+
+  /* ---------- Flowchart canvas (slimmed from 1500 to 1100) ---------- */
+  .flowchart {
+    position: relative;
+    width: 1100px;
+    height: 880px;
+    margin: 0 auto;
+  }
+  svg.lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+  }
+  svg.lines path.flow {
+    fill: none;
+    stroke: var(--ink-soft);
+    stroke-width: 2;
+    opacity: 0.85;
+  }
+  svg.lines text.branch-label {
+    font-family: "Segoe UI", sans-serif;
+    font-size: 11.5px;
+    font-weight: 600;
+    fill: var(--ink-soft);
+    paint-order: stroke fill;
+    stroke: #fff;
+    stroke-width: 4;
+    stroke-opacity: 0.9;
+    stroke-linejoin: round;
+  }
+
+  /* Nodes (absolute-positioned) */
+  .node {
+    position: absolute;
+    z-index: 2;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 1px 0 var(--rule-soft);
+    display: flex;
+    flex-direction: column;
+  }
+  .node .head {
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  /* Tag inside .head that opts OUT of the parent's uppercase transform.
+     Used for "(FDs on)" / "(FDs off)" so they don't render as "(FDS ON)". */
+  .node .head .normal-case {
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .node .title {
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1.25;
+    color: var(--ink);
+  }
+
+  .node.entry {
+    border: 2px solid var(--kmz);
+    background: var(--kmz-soft);
+    padding: 8px 14px;
+    text-align: center;
+  }
+  .node.entry .title { color: var(--kmz); }
+
+  .node.decision {
+    border: 2px dashed var(--decision-bd);
+    background: var(--decision-bg);
+    padding: 10px 16px;
+    text-align: center;
+  }
+  .node.decision .title { color: #6b4d22; }
+  .node.decision .head { color: #8a6d3b; }
+  .node.decision .options-inline {
+    margin-top: 6px;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+    text-align: left;
+  }
+  .node.decision .options-inline strong { color: var(--ink); font-weight: 600; }
+
+  .node.process {
+    border: 1.5px solid var(--process-bd);
+    background: var(--process-bg);
+    padding: 10px 14px;
+  }
+  .node.process .options {
+    margin-top: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .node.process .opt {
+    background: var(--panel);
+    border-left: 3px solid var(--accent);
+    padding: 3px 8px;
+    font-size: 11.5px;
+    line-height: 1.45;
+    border-radius: 0 3px 3px 0;
+  }
+  .node.process .opt strong { color: var(--ink); }
+  .node.process .opt .ex {
+    color: var(--ink-soft);
+    font-family: Consolas, monospace;
+    font-size: 10.5px;
+  }
+
+  .node.outcome {
+    border: 2px solid var(--outcome-bd);
+    background: var(--outcome-bg);
+    padding: 10px 14px;
+  }
+  .node.outcome .title { color: var(--gdb); }
+  .node.outcome .head { color: var(--gdb); }
+  .node.outcome .desc {
+    font-size: 11.5px;
+    color: var(--ink);
+    line-height: 1.5;
+    margin-top: 4px;
+  }
+  .node.outcome.warn {
+    border-color: var(--warn);
+    background: var(--warn-soft);
+  }
+  .node.outcome.warn .title { color: var(--warn); }
+  .node.outcome.warn .head { color: var(--warn); }
+
+  .step-num {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    font-size: 11.5px;
+    padding: 1px 7px;
+    border-radius: 3px;
+    margin-right: 6px;
+    letter-spacing: 0.02em;
+  }
+  .node.decision .step-num { background: #c89a2c; }
+
+  /* ---------- Example combinations (single stacked column on right) ---------- */
+  .examples {
+    position: absolute;
+    top: 40px;
+    left: 720px;
+    width: 360px;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .examples-label {
+    position: absolute;
+    top: 15px;
+    left: 720px;
+    z-index: 2;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .ex-card {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: #fff;
+    padding: 7px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .ex-card .ex-title {
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--ink);
+  }
+  .ex-card .ex-choices {
+    background: var(--panel);
+    border: 1px solid var(--rule-soft);
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-size: 10.5px;
+    line-height: 1.4;
+    color: var(--ink-soft);
+  }
+  .ex-card .ex-choices b { color: var(--ink); font-weight: 600; }
+  .ex-card .ex-tree {
+    background: var(--panel-2);
+    border: 1px solid var(--rule-soft);
+    border-radius: 4px;
+    padding: 5px 8px;
+    font-family: Consolas, monospace;
+    font-size: 10px;
+    line-height: 1.5;
+    color: var(--ink);
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .ex-card .ex-tree .gdb { color: var(--gdb); font-weight: 600; }
+  .ex-card .ex-tree .fd { color: var(--scratch); font-weight: 600; }
+  .ex-card .ex-tree .fc { color: var(--ink); }
+  .ex-card .ex-when {
+    font-size: 10.5px;
+    color: var(--ink-soft);
+    font-style: italic;
+    line-height: 1.35;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>KMZ to Organize GDB &mdash; Decision Flow</h1>
+  <span class="sub">Walk the waterfall; see what comes out</span>
+  <span class="tool-tag">KMZ to Organize GDB (Waterfall)</span>
+</header>
+
+<div class="context-band">
+  <span><strong>Every output Feature Class includes:</strong> <code>Name</code>, <code>FolderPath</code>, <code>SourceKMZ</code>, <code>RawPopup</code>, plus all parsed popup attributes as typed fields.</span>
+  <span>Folder1/Folder2/Folder3 columns are added whenever folder context isn't already in the FC or FD name.</span>
+  <span><strong>Layout uses</strong> only the last 3 folder segments. Deeper context stays in the <code>FolderPath</code> field.</span>
+</div>
+
+<div class="sample">
+  <span class="lbl">Sample input:</span>
+  <span class="kmz-tag">ProjectA.kmz</span>
+  <span class="path">Birds 2026 / BUOW / Known (Pt) &nbsp;+&nbsp; Birds 2026 / BUOW / Suspected (Pt)</span>
+  <span class="sep">|</span>
+  <span class="kmz-tag">ProjectB.kmz</span>
+  <span class="path">Wildlife / Coyote / Den (Pt) &nbsp;+&nbsp; Wildlife / Coyote / Trail (Line)</span>
+</div>
+
+<!-- ====================================================================== -->
+<div class="section-title">The waterfall</div>
+
+<div class="flowchart">
+
+  <svg class="lines" viewBox="0 0 1100 880" preserveAspectRatio="none">
+    <defs>
+      <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5"
+              markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" fill="#52616b"/>
+      </marker>
+    </defs>
+
+    <!-- INPUT (350, 80) bottom -> CONTAINER (350, 130) top -->
+    <path class="flow" d="M 350,80 L 350,128" marker-end="url(#arr)"/>
+
+    <!-- CONTAINER (350, 220) bottom -> SPLIT-FDs (350, 270) top
+         (single arrow; container choice doesn't branch the inner flow) -->
+    <path class="flow" d="M 350,220 L 350,268" marker-end="url(#arr)"/>
+
+    <!-- SPLIT-FDs (350, 340) bottom-left -> 3a FD source (190, 400) top -->
+    <path class="flow" d="M 280,340 C 280,375 190,375 190,398" marker-end="url(#arr)"/>
+    <text x="190" y="367" class="branch-label" text-anchor="middle">Split = Yes</text>
+
+    <!-- SPLIT-FDs (350, 340) bottom-right -> 3b FC (FDs off) (510, 400) top -->
+    <path class="flow" d="M 420,340 C 420,375 510,375 510,398" marker-end="url(#arr)"/>
+    <text x="510" y="367" class="branch-label" text-anchor="middle">Split = No</text>
+
+    <!-- 3a (190, 600) bottom -> 3b FC (FDs on) (190, 650) top -->
+    <path class="flow" d="M 190,600 L 190,648" marker-end="url(#arr)"/>
+  </svg>
+
+  <!-- ============= INPUT entry ============= -->
+  <div class="node entry" style="left: 220px; top: 35px; width: 260px;">
+    <div class="title">Input KMZ / KML files</div>
+  </div>
+
+  <!-- ============= 1. CONTAINER decision ============= -->
+  <div class="node decision" style="left: 130px; top: 128px; width: 440px;">
+    <div class="head"><span class="step-num">1</span> Decision</div>
+    <div class="title">Output container?</div>
+    <div class="options-inline">
+      <strong>Merged:</strong> 1 GDB with the FD/FC layout from below.<br>
+      <strong>Per-KMZ:</strong> N GDBs (one per source, schema per source); same layout inside each.
+    </div>
+  </div>
+
+  <!-- ============= 2. SPLIT-FDs decision ============= -->
+  <div class="node decision" style="left: 180px; top: 268px; width: 340px;">
+    <div class="head"><span class="step-num">2</span> Decision</div>
+    <div class="title">Split output into Feature Datasets?</div>
+  </div>
+
+  <!-- ============= 3a. FD SOURCE process ============= -->
+  <div class="node process" style="left: 30px; top: 398px; width: 320px;">
+    <div class="head"><span class="step-num">3a</span> Process</div>
+    <div class="title">Feature Dataset source</div>
+    <div class="options">
+      <div class="opt"><strong>Top folder</strong> (segments[-3]) &mdash; <span class="ex">e.g. "Birds_2026"</span></div>
+      <div class="opt"><strong>Top two folders</strong> (segments[-3] + [-2]) &mdash; <span class="ex">e.g. "Birds_2026_BUOW"</span></div>
+      <div class="opt"><strong>Source KMZ filename</strong> &mdash; <span class="ex">"ProjectA" (merged container only)</span></div>
+    </div>
+  </div>
+
+  <!-- ============= 3b. FC NAMING (FDs ON) process ============= -->
+  <div class="node process" style="left: 30px; top: 648px; width: 320px;">
+    <div class="head"><span class="step-num">3b</span> Process <span class="normal-case">(FDs on)</span></div>
+    <div class="title">Feature Class naming</div>
+    <div class="options">
+      <div class="opt"><strong>Per-geometry only</strong> &mdash; <span class="ex">Points / Polylines / Polygons</span></div>
+      <div class="opt"><strong>Leaf folder name</strong> &mdash; <span class="ex">"Known", "Suspected" &nbsp; (only when 3a = Top two folders)</span></div>
+      <div class="opt"><strong>Leaf + geometry</strong> &mdash; <span class="ex">e.g. "Known_Points"</span></div>
+      <div class="opt"><strong>Parent + leaf + geometry</strong> &mdash; <span class="ex">e.g. "BUOW_Known_Points"</span></div>
+      <div class="opt"><strong>Folder pair + geometry</strong> &mdash; <span class="ex">e.g. "Birds_2026_BUOW_Points"</span></div>
+    </div>
+  </div>
+
+  <!-- ============= 3b. FC NAMING (FDs OFF) process ============= -->
+  <div class="node process" style="left: 350px; top: 398px; width: 320px;">
+    <div class="head"><span class="step-num">3b</span> Process <span class="normal-case">(FDs off)</span></div>
+    <div class="title">Feature Class naming (at GDB root)</div>
+    <div class="options">
+      <div class="opt"><strong>Per-geometry only</strong> &mdash; <span class="ex">Points / Polylines / Polygons</span></div>
+      <div class="opt"><strong>Top folder + geometry</strong> &mdash; <span class="ex">e.g. "Birds_2026_Points"</span></div>
+      <div class="opt"><strong>Leaf + geometry</strong> &mdash; <span class="ex">e.g. "Known_Points"</span></div>
+      <div class="opt"><strong>Parent + leaf + geometry</strong> &mdash; <span class="ex">e.g. "BUOW_Known_Points"</span></div>
+      <div class="opt"><strong>Folder pair + geometry</strong> &mdash; <span class="ex">e.g. "Birds_2026_BUOW_Points"</span></div>
+    </div>
+  </div>
+
+  <!-- (Outcome box removed -- its content was folded into the
+       container decision box above for conciseness.) -->
+
+  <!-- ============= Example combinations ============= -->
+  <div class="examples-label">Example combinations</div>
+
+  <div class="examples">
+    <div class="ex-card">
+      <div class="ex-title">Folder Hierarchy (merged)</div>
+      <div class="ex-choices">
+        <b>1.</b> One merged GDB &nbsp; <b>2.</b> FDs Yes &nbsp;
+        <b>3a.</b> Top two folders &nbsp; <b>3b.</b> Leaf folder name
+      </div>
+      <div class="ex-tree"><span class="gdb">Output.gdb</span>
+  <span class="fd">+ Birds_2026_BUOW/</span>
+      <span class="fc">- Known</span>
+      <span class="fc">- Suspected</span>
+  <span class="fd">+ Wildlife_Coyote/</span>
+      <span class="fc">- Den</span>
+      <span class="fc">- Trail</span></div>
+      <div class="ex-when">When source folder structure already matches the deliverable.</div>
+    </div>
+
+    <div class="ex-card">
+      <div class="ex-title">Source-tracked + Folder-pair FCs (merged)</div>
+      <div class="ex-choices">
+        <b>1.</b> One merged GDB &nbsp; <b>2.</b> FDs Yes &nbsp;
+        <b>3a.</b> Source KMZ &nbsp; <b>3b.</b> Folder pair + geometry
+      </div>
+      <div class="ex-tree"><span class="gdb">Output.gdb</span>
+  <span class="fd">+ ProjectA/</span>
+      <span class="fc">- Birds_2026_BUOW_Points</span>
+  <span class="fd">+ ProjectB/</span>
+      <span class="fc">- Wildlife_Coyote_Points</span>
+      <span class="fc">- Wildlife_Coyote_Polylines</span></div>
+      <div class="ex-when">When KMZ origin matters AND folder context belongs in FC names.</div>
+    </div>
+
+    <div class="ex-card">
+      <div class="ex-title">Per-KMZ + folder-pair FCs (NEW)</div>
+      <div class="ex-choices">
+        <b>1.</b> One GDB per KMZ &nbsp; <b>2.</b> FDs No &nbsp;
+        <b>3b.</b> Folder pair + geometry
+      </div>
+      <div class="ex-tree"><span class="gdb">ProjectA.gdb</span>
+    <span class="fc">- Birds_2026_BUOW_Points</span>
+<span class="gdb">ProjectB.gdb</span>
+    <span class="fc">- Wildlife_Coyote_Points</span>
+    <span class="fc">- Wildlife_Coyote_Polylines</span></div>
+      <div class="ex-when">Each input KMZ becomes a separate deliverable with named FCs.</div>
+    </div>
+
+    <div class="ex-card">
+      <div class="ex-title">Per-KMZ flat (simplest split)</div>
+      <div class="ex-choices">
+        <b>1.</b> One GDB per KMZ &nbsp; <b>2.</b> FDs No &nbsp;
+        <b>3b.</b> Per-geometry only
+      </div>
+      <div class="ex-tree"><span class="gdb">ProjectA.gdb</span>
+    <span class="fc">- Points</span>
+<span class="gdb">ProjectB.gdb</span>
+    <span class="fc">- Points</span>
+    <span class="fc">- Polylines</span></div>
+      <div class="ex-when">Each input KMZ separate, generic per-geometry FCs inside.</div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
