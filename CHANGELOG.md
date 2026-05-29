@@ -2,6 +2,11 @@
 
 All notable changes to this toolbox. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Fixed
+- **HARN projection crash.** Selecting any NAD83(HARN) State Plane output (Oregon, Washington, or any of the six California zones) raised `ValueError: NAD_1983_To_HARN_OR` (or `_WA` / `_CA_N` / `_CA_S`) during the organize phase. Those ArcMap-era transformation names do not exist in ArcGIS Pro's geographic-transformation set. The hardcoded transformation lists in `COORD_SYSTEMS` are removed; the WGS84 -> target transformation is now resolved at runtime via `arcpy.ListTransformations` against the real data extent (`_resolve_transformation` / `_wgs84_data_extent`), matching the default the ArcGIS Pro Project tool picks. UTM and WGS84 pass-through outputs are unaffected.
+
 ## [1.1.0-qa] - 2026-05-28
 
 Second QA candidate. UX pivot plus a batch of correctness and ergonomics fixes on top of the 1.0.0-qa code. All 1.0.0-qa fixes (B1, B4, B5, B6, B7, B8, B9, B10, N3, N6, N12) remain in force.

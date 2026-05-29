@@ -187,115 +187,46 @@ SYSTEM_FIELD_NAMES = {
     "OBJECTID", "Shape",
 }
 
-# Intermediate datum for multi-step transformations (WGS84 -> NAD83 -> HARN).
-SR_NAD83_GCS_WKID = 4269  # GCS_North_American_1983
+# Source SR for all scratch FCs written by Tool 1.
+SR_WGS84_WKID = 4326  # GCS_WGS_1984 (EPSG:4326)
 
 # Output coordinate-system shortlist exposed in the UI. Each entry maps a
-# human-readable label to its target WKID and the WGS84 -> target
-# transformation chain. Empty transformation list means no reprojection.
+# human-readable label to its target WKID. The WGS84 -> target datum
+# transformation is NOT hardcoded: it is resolved at runtime via
+# arcpy.ListTransformations against the real data extent (see
+# _resolve_transformation), which mirrors what the ArcGIS Pro Project tool
+# picks by default and adapts to the install's transformation set.
 #
-# NOTE: All scratch FCs from Tool 1 are written in WGS84 (EPSG:4326). The
-# transformation chain takes geometries from WGS84 to the target SR.
+# History: earlier revisions hardcoded ArcMap-era names like
+# "NAD_1983_To_HARN_OR" / "NAD_1983_To_HARN_WA". Those names do not exist in
+# ArcGIS Pro's geographic-transformation set (the real names follow the
+# "NAD_1983_To_NAD_1983_HARN_<n>" pattern), so projectAs raised
+# "ValueError: NAD_1983_To_HARN_OR" and every HARN target was unusable.
 COORD_SYSTEMS = {
-    # Pass-through
-    "WGS 1984 (no reproject)": {
-        "wkid": 4326,
-        "transformations": [],
-    },
+    # Pass-through (scratch is already WGS84)
+    "WGS 1984 (no reproject)": {"wkid": 4326},
 
     # Washington State Plane NAD83(HARN), US Survey Feet
-    "NAD 1983 HARN StatePlane Washington North (US Feet)": {
-        "wkid": 2926,
-        "transformations": [
-            "WGS_1984_(ITRF00)_To_NAD_1983",
-            "NAD_1983_To_HARN_WA",
-        ],
-    },
-    "NAD 1983 HARN StatePlane Washington South (US Feet)": {
-        "wkid": 2927,
-        "transformations": [
-            "WGS_1984_(ITRF00)_To_NAD_1983",
-            "NAD_1983_To_HARN_WA",
-        ],
-    },
+    "NAD 1983 HARN StatePlane Washington North (US Feet)": {"wkid": 2926},
+    "NAD 1983 HARN StatePlane Washington South (US Feet)": {"wkid": 2927},
 
     # Oregon State Plane NAD83(HARN), International Feet
-    "NAD 1983 HARN StatePlane Oregon North (Intl Feet)": {
-        "wkid": 2992,
-        "transformations": [
-            "WGS_1984_(ITRF00)_To_NAD_1983",
-            "NAD_1983_To_HARN_OR",
-        ],
-    },
-    "NAD 1983 HARN StatePlane Oregon South (Intl Feet)": {
-        "wkid": 2993,
-        "transformations": [
-            "WGS_1984_(ITRF00)_To_NAD_1983",
-            "NAD_1983_To_HARN_OR",
-        ],
-    },
+    "NAD 1983 HARN StatePlane Oregon North (Intl Feet)": {"wkid": 2992},
+    "NAD 1983 HARN StatePlane Oregon South (Intl Feet)": {"wkid": 2993},
 
     # California State Plane NAD83(HARN), US Survey Feet
-    "NAD 1983 HARN StatePlane California I (US Feet)": {
-        "wkid": 2870,
-        "transformations": [
-            "WGS_1984_(ITRF00)_To_NAD_1983",
-            "NAD_1983_To_HARN_CA_N",
-        ],
-    },
-    "NAD 1983 HARN StatePlane California II (US Feet)": {
-        "wkid": 2871,
-        "transformations": [
-            "WGS_1984_(ITRF00)_To_NAD_1983",
-            "NAD_1983_To_HARN_CA_N",
-        ],
-    },
-    "NAD 1983 HARN StatePlane California III (US Feet)": {
-        "wkid": 2872,
-        "transformations": [
-            "WGS_1984_(ITRF00)_To_NAD_1983",
-            "NAD_1983_To_HARN_CA_N",
-        ],
-    },
-    "NAD 1983 HARN StatePlane California IV (US Feet)": {
-        "wkid": 2873,
-        "transformations": [
-            "WGS_1984_(ITRF00)_To_NAD_1983",
-            "NAD_1983_To_HARN_CA_S",
-        ],
-    },
-    "NAD 1983 HARN StatePlane California V (US Feet)": {
-        "wkid": 2874,
-        "transformations": [
-            "WGS_1984_(ITRF00)_To_NAD_1983",
-            "NAD_1983_To_HARN_CA_S",
-        ],
-    },
-    "NAD 1983 HARN StatePlane California VI (US Feet)": {
-        "wkid": 2875,
-        "transformations": [
-            "WGS_1984_(ITRF00)_To_NAD_1983",
-            "NAD_1983_To_HARN_CA_S",
-        ],
-    },
+    "NAD 1983 HARN StatePlane California I (US Feet)": {"wkid": 2870},
+    "NAD 1983 HARN StatePlane California II (US Feet)": {"wkid": 2871},
+    "NAD 1983 HARN StatePlane California III (US Feet)": {"wkid": 2872},
+    "NAD 1983 HARN StatePlane California IV (US Feet)": {"wkid": 2873},
+    "NAD 1983 HARN StatePlane California V (US Feet)": {"wkid": 2874},
+    "NAD 1983 HARN StatePlane California VI (US Feet)": {"wkid": 2875},
 
     # UTM NAD83 (plain) - meters. HARN UTM is per-state and uncommon.
-    "NAD 1983 UTM Zone 9N (meters)": {
-        "wkid": 26909,
-        "transformations": ["WGS_1984_(ITRF00)_To_NAD_1983"],
-    },
-    "NAD 1983 UTM Zone 10N (meters)": {
-        "wkid": 26910,
-        "transformations": ["WGS_1984_(ITRF00)_To_NAD_1983"],
-    },
-    "NAD 1983 UTM Zone 11N (meters)": {
-        "wkid": 26911,
-        "transformations": ["WGS_1984_(ITRF00)_To_NAD_1983"],
-    },
-    "NAD 1983 UTM Zone 12N (meters)": {
-        "wkid": 26912,
-        "transformations": ["WGS_1984_(ITRF00)_To_NAD_1983"],
-    },
+    "NAD 1983 UTM Zone 9N (meters)": {"wkid": 26909},
+    "NAD 1983 UTM Zone 10N (meters)": {"wkid": 26910},
+    "NAD 1983 UTM Zone 11N (meters)": {"wkid": 26911},
+    "NAD 1983 UTM Zone 12N (meters)": {"wkid": 26912},
 }
 
 DEFAULT_COORD_SYSTEM = "WGS 1984 (no reproject)"
@@ -352,12 +283,10 @@ def post_process(
         )
     cs_info = COORD_SYSTEMS[target_coord_system]
     target_sr = arcpy.SpatialReference(cs_info["wkid"])
-    transformations = cs_info["transformations"]
-    intermediate_sr = (
-        arcpy.SpatialReference(SR_NAD83_GCS_WKID)
-        if len(transformations) > 1
-        else None
-    )
+    # The WGS84 -> target transformation is resolved below, after rows are
+    # collected, so arcpy.ListTransformations can rank candidates against the
+    # true data extent. Empty string means "no datum transformation needed".
+    transformation = ""
 
     scratch_folder = Path(scratch_folder)
     output_gdb_path = Path(output_gdb_path)
@@ -386,10 +315,6 @@ def post_process(
     else:
         log(f"Organization mode: {mode}")
     log(f"Output coordinate system: {target_coord_system}")
-    if transformations:
-        log(f"WGS84 -> target transform chain: {' -> '.join(transformations)}")
-    else:
-        log("No reprojection (WGS84 pass-through)")
 
     if arcpy.Exists(str(output_gdb_path)):
         # Refuse to write into an existing GDB. Schema reconciliation across
@@ -423,6 +348,21 @@ def post_process(
         log(f"\nReading {raw_gdb.name}...")
         _collect_rows(str(raw_gdb), all_rows, popup_parser, log)
     log(f"\nCollected {len(all_rows)} total rows")
+
+    # Resolve the WGS84 -> target datum transformation now that the data is in
+    # hand, so ListTransformations can rank candidates against the real extent.
+    if target_sr.factoryCode == SR_WGS84_WKID:
+        log("No reprojection (WGS84 pass-through)")
+    else:
+        data_extent = _wgs84_data_extent(all_rows)
+        transformation = _resolve_transformation(target_sr, data_extent)
+        if transformation:
+            log(f"WGS84 -> {target_coord_system}: transformation '{transformation}'")
+        else:
+            log(
+                f"WGS84 -> {target_coord_system}: projecting with no datum "
+                f"transformation (same datum / pure projection change)"
+            )
 
     # Per-KMZ context refinement: when we're inside the per-KMZ orchestrator
     # (_source_kmz_filter is set), the per-KMZ GDB itself already represents
@@ -621,7 +561,7 @@ def post_process(
             with arcpy.da.InsertCursor(fc_path, cursor_fields) as cursor:
                 for row in rows:
                     geom = _project_geometry(
-                        row["geometry"], target_sr, transformations, intermediate_sr
+                        row["geometry"], target_sr, transformation
                     )
                     values = [
                         geom,
@@ -843,28 +783,72 @@ def _coerce_value(value, field_type, field_length=None):
 # Grouping / name resolution
 # ---------------------------------------------------------------------------
 
-def _project_geometry(geom, target_sr, transformations, intermediate_sr=None):
-    """Project a WGS84 geometry to target_sr, applying the transformation chain.
+def _wgs84_data_extent(rows):
+    """Union extent (in WGS84) of all geometries in rows, or None if empty.
 
-    transformations:
-      []           - target is WGS84; geom returned unchanged.
-      [t1]         - one-step projection (e.g. WGS84 -> NAD83 plain).
-      [t1, t2]     - two-step projection through intermediate_sr (e.g.
-                     WGS84 -> NAD83 -> NAD83(HARN) state plane).
+    Used to give arcpy.ListTransformations a real extent so it can rank the
+    candidate datum transformations the way the Project tool would for this
+    data, rather than picking a region-agnostic default.
+    """
+    xmin = ymin = xmax = ymax = None
+    for row in rows:
+        geom = row.get("geometry")
+        if geom is None:
+            continue
+        ext = getattr(geom, "extent", None)
+        if ext is None:
+            continue
+        if xmin is None:
+            xmin, ymin, xmax, ymax = ext.XMin, ext.YMin, ext.XMax, ext.YMax
+        else:
+            xmin = min(xmin, ext.XMin)
+            ymin = min(ymin, ext.YMin)
+            xmax = max(xmax, ext.XMax)
+            ymax = max(ymax, ext.YMax)
+    if xmin is None:
+        return None
+    extent = arcpy.Extent(xmin, ymin, xmax, ymax)
+    extent.spatialReference = arcpy.SpatialReference(SR_WGS84_WKID)
+    return extent
 
-    Returns None if geom is None. Raises on projection failure rather than
-    silently dropping data; callers should expect a fatal error if the
-    transformation chain is wrong for the data extent.
+
+def _resolve_transformation(target_sr, extent=None):
+    """Pick the WGS84 -> target_sr datum transformation arcpy recommends.
+
+    Returns a transformation name string usable by Geometry.projectAs (arcpy
+    accepts composite "A + B" strings as a single argument), or "" when none
+    is needed (target is WGS84, or the change is a pure projection within the
+    same datum). Uses the first entry of arcpy.ListTransformations, which ESRI
+    ranks best-first for the supplied extent -- the same choice the ArcGIS Pro
+    Project tool makes by default.
+    """
+    if target_sr.factoryCode == SR_WGS84_WKID:
+        return ""
+    wgs84 = arcpy.SpatialReference(SR_WGS84_WKID)
+    try:
+        if extent is not None:
+            txs = arcpy.ListTransformations(wgs84, target_sr, extent)
+        else:
+            txs = arcpy.ListTransformations(wgs84, target_sr)
+    except Exception:
+        txs = []
+    return txs[0] if txs else ""
+
+
+def _project_geometry(geom, target_sr, transformation=""):
+    """Project a WGS84 geometry to target_sr using the resolved transformation.
+
+    transformation is a single arcpy transformation name (possibly a composite
+    "A + B" string) or "" for none. Returns None if geom is None. Raises on
+    projection failure rather than silently dropping data.
     """
     if geom is None:
         return None
-    if not transformations:
+    if target_sr.factoryCode == SR_WGS84_WKID:
         return geom
-    if len(transformations) == 1:
-        return geom.projectAs(target_sr, transformations[0])
-    # Multi-step: project through the intermediate datum first
-    intermediate = geom.projectAs(intermediate_sr, transformations[0])
-    return intermediate.projectAs(target_sr, transformations[1])
+    if transformation:
+        return geom.projectAs(target_sr, transformation)
+    return geom.projectAs(target_sr)
 
 
 def _folder_fields(segments):
