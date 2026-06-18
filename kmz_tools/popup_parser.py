@@ -76,8 +76,11 @@ class PopupParser:
 
             attrs = {}
 
-            # Find all tables
-            tables = doc.xpath('.//table')
+            # Find all tables. Include self::table: when the popup HTML is a
+            # bare <table>...</table> with no surrounding element, lxml makes
+            # the <table> the root, and a descendant-only './/table' would miss
+            # it entirely (returning zero fields).
+            tables = doc.xpath('.//table | self::table')
             if not tables:
                 return None
 

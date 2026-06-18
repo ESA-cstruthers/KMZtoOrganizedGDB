@@ -5,6 +5,8 @@ All notable changes to this toolbox. The format follows [Keep a Changelog](https
 ## [Unreleased]
 
 ### Fixed
+- **ExtendedData attributes lost for description-less KMZs.** Placemarks that carry their attributes only in `<ExtendedData>` (`SchemaData`/`SimpleData`) with no `<description>` -- common in Esri/ArcGIS-exported KMZs -- produced output feature classes with no popup fields at all. Stage 1 parsed the ExtendedData but discarded it: `RawPopup` (the only popup carrier between stages) was built solely from `<description>`, which was empty. Stage 1 now synthesizes a 2-column HTML table from the parsed attributes into `RawPopup` when there is no description, so Stage 2 recovers the typed fields.
+- **Bare-table popups parsed as empty.** `_parse_html_table` searched only descendant tables (`.//table`); when the popup HTML was a bare `<table>...</table>` with no surrounding element, lxml made the table the document root and it was missed, yielding zero fields. Now also matches a root-level table (`self::table`).
 - **HARN projection crash.** Selecting any NAD83(HARN) State Plane output (Oregon, Washington, or any of the six California zones) raised `ValueError: NAD_1983_To_HARN_OR` (or `_WA` / `_CA_N` / `_CA_S`) during the organize phase. Those ArcMap-era transformation names do not exist in ArcGIS Pro's geographic-transformation set. The hardcoded transformation lists in `COORD_SYSTEMS` are removed; the WGS84 -> target transformation is now resolved at runtime via `arcpy.ListTransformations` against the real data extent (`_resolve_transformation` / `_wgs84_data_extent`), matching the default the ArcGIS Pro Project tool picks. UTM and WGS84 pass-through outputs are unaffected.
 
 ## [1.1.0-qa] - 2026-05-28

@@ -5,6 +5,7 @@ Thin wrapper that ties together the parsers and the GDB writer. The .pyt
 imports this and calls convert_kmz_to_gdb(); CLI users can call it too.
 """
 
+import html as html_module
 from pathlib import Path
 from collections import defaultdict
 
@@ -14,6 +15,23 @@ from .geometry_builder import GeometryBuilder
 from .gdb_writer import SimpleGDBWriter, geometry_from_coords
 from .naming import NamingResolver
 from .network_loader import follow_network_links
+
+
+def _attrs_to_html_table(attrs):
+    """Render a flat {name: value} dict as a minimal 2-column HTML table.
+
+    Used so ExtendedData (SchemaData/SimpleData) attributes survive the
+    KMZ -> scratch-GDB -> organized-GDB pipeline, which carries popup data
+    only as RawPopup HTML that Stage 2 re-parses with its html_table tier.
+    Keys and values are HTML-escaped; None values render as empty cells.
+    Output is subject to the 4000-char RawPopup cap on write.
+    """
+    rows = []
+    for key, value in attrs.items():
+        k = html_module.escape(str(key))
+        v = "" if value is None else html_module.escape(str(value))
+        rows.append(f"<tr><td>{k}</td><td>{v}</td></tr>")
+    return "<table>" + "".join(rows) + "</table>"
 
 
 def convert_kmz_to_gdb(kmz_path, output_folder, log=print,
@@ -146,11 +164,20 @@ def convert_kmz_to_gdb(kmz_path, output_folder, log=print,
             continue
 
         try:
-            _attrs, raw_popup = popup_parser.parse(
+            attrs, raw_popup = popup_parser.parse(
                 pm.get("description", ""),
                 pm.get("extended_data", {}),
                 strategy="auto",
             )
+            # The scratch GDB carries popup data only as RawPopup HTML, which
+            # Stage 2 (post_processor) re-parses into typed fields. When a
+            # placemark has no <description> but does carry ExtendedData
+            # (SchemaData/SimpleData -- common in Esri-exported KMZs), the
+            # description-derived RawPopup is empty and those attributes would
+            # be lost entirely. Synthesize a 2-column table from the parsed
+            # attrs so Stage 2's html_table tier recovers them unchanged.
+            if not raw_popup and attrs:
+                raw_popup = _attrs_to_html_table(attrs)
         except Exception as e:
             log(f"  [WARN] popup parse error on {pm.get('placemark_id')}: {e}")
             raw_popup = ""
