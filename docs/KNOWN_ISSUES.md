@@ -56,6 +56,11 @@ Deferred items as of `1.1.0-qa`. Each entry lists severity, scenario, current be
 **Workaround:** Delete the `*_scratch/` folder manually once you're sure no further re-organization is needed.<br>
 **Next:** Optional "Clean scratch on success" checkbox if user feedback warrants it.
 
+### KI-11 (low) -- RawPopup 4000-char cap can truncate synthesized ExtendedData
+**Scenario:** A description-less KMZ carries its attributes only in `<ExtendedData>` (`SchemaData`/`SimpleData`). Stage 1 now synthesizes a 2-column HTML table from those attributes into `RawPopup` so they survive to the output table. `RawPopup` is a `TEXT` field capped at 4000 characters.<br>
+**Now:** For typical attribute sets (e.g. ~17 short fields ~= 900 chars) there is no issue. A placemark with very many fields, or fields with very long values, can exceed 4000 chars; the synthesized table is truncated mid-row on write and the trailing fields are dropped before Stage 2 re-parses them. Same cap has always applied to `<description>`-based popups.<br>
+**Next:** If this surfaces in practice, carry parsed attributes between stages in a dedicated serialized field (e.g. a JSON blob) instead of round-tripping HTML through the capped `RawPopup`, removing the length limit entirely.
+
 ## Closed in 1.1.0-qa
 
 UX pivot (Waterfall replaces A/B/C/D/F/G), per-KMZ unlocked for arbitrary FD/FC composition, auto-skip redundant source folder, FD shallow-path fallback, digit-leading `x` prefix, Output Folder direction fix, `ClearWorkspaceCache` retry, FC truncation preserves geometry suffix, hover-help XML, Waterfall diagram rebuild. See `CHANGELOG.md` for details.
